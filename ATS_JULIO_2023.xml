@@ -5705,8 +5705,8 @@
 		</detalleCompras>
 		<detalleCompras>
 			<codSustento>02</codSustento>
-			<tpIdProv>02</tpIdProv>
-			<idProv>01207495530</idProv>
+			<tpIdProv>01</tpIdProv>
+			<idProv>1207495530001</idProv>
 			<tipoComprobante>03</tipoComprobante>
 			<parteRel>NO</parteRel>
 			<fechaRegistro>18/07/2023</fechaRegistro>
