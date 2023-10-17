@@ -3,9 +3,9 @@ import math
 import pandas as pd
 from lxml import etree as et
 
-raw_data = pd.read_excel("ATS AGOSTO.xlsx")
+raw_data = pd.read_excel("ATS SEPTIEMBRE.xlsx")
 
-Column_heading_ = [None] * 1000
+Column_heading_ = [None] * len(raw_data)
 root = et.Element('iva')
 Column_heading_[1] = et.SubElement(root, 'TipoIDInformante')
 Column_heading_[2] = et.SubElement(root, 'IdInformante')
@@ -47,8 +47,10 @@ duplicados = raw_data[raw_data.duplicated(subset=columnas_a_verificar, keep=Fals
 
 # duplicados['index'] = duplicados.index
 duplicados.loc[:, 'index'] = duplicados.index
-duplicados_count = duplicados.groupby('idProv').size().reset_index(name='count')
-duplicados_result = duplicados_count.merge(duplicados[['idProv', 'index']], on='idProv')
+# duplicados_count = duplicados.groupby('idProv','codSustento','tipoComprobante','establecimiento','puntoEmision','secuencial','autorizacion').size().reset_index(name='count')
+duplicados_count = duplicados.groupby(['idProv', 'codSustento', 'tipoComprobante', 'establecimiento', 'puntoEmision', 'secuencial', 'autorizacion']).size().reset_index(name='count')
+# duplicados_result = duplicados_count.merge(duplicados['idProv', 'codSustento', 'tipoComprobante', 'establecimiento', 'puntoEmision', 'secuencial', 'autorizacion', 'index'], on='idProv')
+duplicados_result = duplicados_count.merge(duplicados[['idProv', 'codSustento', 'tipoComprobante', 'establecimiento', 'puntoEmision', 'secuencial', 'autorizacion', 'index']], on=['idProv', 'codSustento', 'tipoComprobante', 'establecimiento', 'puntoEmision', 'secuencial', 'autorizacion'])
 i = 0
 new_index = None
 
@@ -57,6 +59,10 @@ for i, row in raw_data.iterrows():
         continue
     # root_tag_iva = et.SubElement(root, 'iva')  # ==> Root Name
     # These are the tag names for each row
+    new_index = None
+
+
+
     root_tags_detalle_compras = et.SubElement(root_tag_compras, 'detalleCompras')
     Column_heading_[9] = et.SubElement(root_tags_detalle_compras, 'codSustento')
     Column_heading_[10] = et.SubElement(root_tags_detalle_compras, 'tpIdProv')
@@ -88,6 +94,10 @@ for i, row in raw_data.iterrows():
     Column_heading_[35] = et.SubElement(root_tag_pagoExterior, 'aplicConvDobTrib')
     Column_heading_[36] = et.SubElement(root_tag_pagoExterior, 'pagExtSujRetNorLeg')
     valor = float(row['formaPago'])
+    # Aqui pregunto si la columno formaPago tiene un valor ya que si lo tiene debo de comenzar a agregar un tag nuevo 
+    # 1. Se obtiene el valor de la columna 'formaPago' y se convierte a un número decimal utilizando la función float(). 
+    # 2. Se verifica si el valor es un NaN (Not a Number) utilizando la función math.isnan(). Si el valor es NaN, significa que no es un número y se ejecuta el bloque de código dentro del if. 
+    
     if math.isnan(valor):
         root_tag_air = et.SubElement(root_tags_detalle_compras, 'air')
 
@@ -96,6 +106,7 @@ for i, row in raw_data.iterrows():
             idProveedor = duplicados_result.loc[duplicados_result['index'] == i, 'idProv'].values[0]
             indice = duplicados_result.loc[duplicados_result['index'] == i, 'index'].values[0]
             numero = 36
+
             for cantidad in range(numero_veces):
                 root_tag_detail_air = et.SubElement(root_tag_air, 'detalleAir')
                 Column_heading_[numero + 1] = et.SubElement(root_tag_detail_air, 'codRetAir')
@@ -122,6 +133,9 @@ for i, row in raw_data.iterrows():
             Column_heading_[43] = et.SubElement(root_tags_detalle_compras, 'secRetencion1')
             Column_heading_[44] = et.SubElement(root_tags_detalle_compras, 'autRetencion1')
             Column_heading_[45] = et.SubElement(root_tags_detalle_compras, 'fechaEmiRet1')
+    
+    # 3. Si el valor no es NaN, significa que es un número y no se ejecuta el bloque de código dentro del if.
+    # Es decir debo de agregar un tag llamado formasPago
     else:
         root_tag_formas_pago = et.SubElement(root_tags_detalle_compras, 'formasDePago')
         Column_heading_[37] = et.SubElement(root_tag_formas_pago, 'formaPago')
@@ -132,6 +146,7 @@ for i, row in raw_data.iterrows():
             idProveedor = duplicados_result.loc[duplicados_result['index'] == i, 'idProv'].values[0]
             indice = duplicados_result.loc[duplicados_result['index'] == i, 'index'].values[0]
             numero = 37
+
             for cantidad in range(numero_veces):
                 root_tag_detail_air = et.SubElement(root_tag_air, 'detalleAir')
                 Column_heading_[numero + 1] = et.SubElement(root_tag_detail_air, 'codRetAir')
@@ -158,7 +173,8 @@ for i, row in raw_data.iterrows():
             Column_heading_[45] = et.SubElement(root_tags_detalle_compras, 'autRetencion1')
             Column_heading_[46] = et.SubElement(root_tags_detalle_compras, 'fechaEmiRet1')
 
-    # These are the tag names for each row
+
+    # Aqui ya comienzo a ingresar informacion en el esqueleto del xml
     Column_heading_[1].text = str(row['TipoIDInformante'])
     Column_heading_[2].text = '0' + str(row['IdInformante']) if len(str(row['IdInformante'])) <= 12 else str(
         row['IdInformante'])
@@ -197,21 +213,28 @@ for i, row in raw_data.iterrows():
     Column_heading_[35].text = str(row['aplicConvDobTrib'])
     Column_heading_[36].text = str(row['pagExtSujRetNorLeg'])
     valor = float(row['formaPago'])
+     # Aqui pregunto si la columno formaPago tiene un valor ya que si lo tiene debo de comenzar a agregar un tag nuevo 
+    # 1. Se obtiene el valor de la columna 'formaPago' y se convierte a un número decimal utilizando la función float(). 
+    # 2. Se verifica si el valor es un NaN (Not a Number) utilizando la función math.isnan(). Si el valor es NaN, significa que no es un número y se ejecuta el bloque de código dentro del if. 
     if math.isnan(valor):
+
         if i in duplicados_result['index'].values:
             numero_veces = duplicados_result.loc[duplicados_result['index'] == i, 'count'].values[0]
             idProveedor = duplicados_result.loc[duplicados_result['index'] == i, 'idProv'].values[0]
             indice = duplicados_result.loc[duplicados_result['index'] == i, 'index'].values[0]
             numero = 36
+
+
             filtered_data = duplicados_result[duplicados_result['idProv'] == idProveedor]
 
             for index in filtered_data['index']:
-                Column_heading_[numero + 1].text = str(raw_data.loc[index, 'codRetAir'])
-                Column_heading_[numero + 2].text = "{:.2f}".format(float(str(raw_data.loc[index, 'baseImpAir'])))
-                Column_heading_[numero + 3].text = "{:.2f}".format(float(str(raw_data.loc[index, 'porcentajeAir'])))
-                Column_heading_[numero + 4].text = "{:.2f}".format(float(str(raw_data.loc[index, 'valRetAir'])))
-                numero = numero + 4
-                new_index = index
+                if index >= i and abs(index - i) <= 1:
+                    Column_heading_[numero + 1].text = str(raw_data.loc[index, 'codRetAir'])
+                    Column_heading_[numero + 2].text = "{:.2f}".format(float(str(raw_data.loc[index, 'baseImpAir'])))
+                    Column_heading_[numero + 3].text = "{:.2f}".format(float(str(raw_data.loc[index, 'porcentajeAir'])))
+                    Column_heading_[numero + 4].text = "{:.2f}".format(float(str(raw_data.loc[index, 'valRetAir'])))
+                    numero = numero + 4
+                    new_index = index
 
             if row['estabRetencion1'] != 'NA':
                 Column_heading_[numero + 1].text = str(row['estabRetencion1']).replace('.0', '').zfill(3)
@@ -223,10 +246,13 @@ for i, row in raw_data.iterrows():
             else:
                 Column_heading_[numero + 2].text = str(row['ptoEmiRetencion1'])
 
+
+
+
             Column_heading_[numero + 3].text = str(row['secRetencion1'])
+
             Column_heading_[numero + 4].text = str(row['autRetencion1'])
             Column_heading_[numero + 5].text = str(row['fechaEmiRet1'])
-
 
         else:
             Column_heading_[37].text = str(row['codRetAir'])
@@ -247,9 +273,12 @@ for i, row in raw_data.iterrows():
             Column_heading_[43].text = str(row['secRetencion1'])
             Column_heading_[44].text = str(row['autRetencion1'])
             Column_heading_[45].text = str(row['fechaEmiRet1'])
+
+
+    # 3. Si el valor no es NaN, significa que es un número y no se ejecuta el bloque de código dentro del if.
+    # Es decir debo de agregar un tag llamado formasPago
     else:
         Column_heading_[37].text = str(row['formaPago'])
-
         if i in duplicados_result['index'].values:
             numero_veces = duplicados_result.loc[duplicados_result['index'] == i, 'count'].values[0]
             idProveedor = duplicados_result.loc[duplicados_result['index'] == i, 'idProv'].values[0]
@@ -258,12 +287,15 @@ for i, row in raw_data.iterrows():
 
             filtered_data = duplicados_result[duplicados_result['idProv'] == idProveedor]
             for index in filtered_data['index']:
-                Column_heading_[numero + 1].text = str(raw_data.loc[index, 'codRetAir'])
-                Column_heading_[numero + 2].text = "{:.2f}".format(float(str(raw_data.loc[index, 'baseImpAir'])))
-                Column_heading_[numero + 3].text = "{:.2f}".format(float(str(raw_data.loc[index, 'porcentajeAir'])))
-                Column_heading_[numero + 4].text = "{:.2f}".format(float(str(raw_data.loc[index, 'valRetAir'])))
-                numero = numero + 4
-                new_index = index
+
+                if index>=i and abs(index - i) <= 1:
+                    Column_heading_[numero + 1].text = str(raw_data.loc[index, 'codRetAir'])
+                    Column_heading_[numero + 2].text = "{:.2f}".format(float(str(raw_data.loc[index, 'baseImpAir'])))
+                    Column_heading_[numero + 3].text = "{:.2f}".format(float(str(raw_data.loc[index, 'porcentajeAir'])))
+                    Column_heading_[numero + 4].text = "{:.2f}".format(float(str(raw_data.loc[index, 'valRetAir'])))
+                    numero = numero + 4
+                    new_index = index
+
 
             if row['estabRetencion1'] != 'NA':
                 Column_heading_[numero + 1].text = str(row['estabRetencion1']).replace('.0', '').zfill(3)
@@ -303,4 +335,4 @@ for i, row in raw_data.iterrows():
 
 tree = et.ElementTree(root)
 et.indent(tree, space="\t", level=0)
-tree.write('ATS AGOSTO.xml', encoding="utf-8")
+tree.write('ATS SEPTIEMBRE.xml', encoding="utf-8")
